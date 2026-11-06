@@ -2,6 +2,7 @@
 
 在 GitHub 的 **Actions → Redmi AX6000 honk firmware → Run workflow** 手动构建。
 成功后下载 `ax6000-honk-<run-id>`，其中包含固件、同批次 APK/kmods 和 `ax6000-evidence/` 核验记录。
+同时提供配齐本批次软件包的独立 ImageBuilder，供本地注入私人配置。
 
 ## 此固件适用的设备
 
@@ -27,6 +28,14 @@
 完整产物同时保留匹配的 APK/kmods。补装内核模块时使用**该构建的包**，不要因为官方源内核号也相同就混用，也不要强制忽略 kernel 依赖。`ax6000-evidence/firmware-audit.json` 记录实际 ABI、BTF、分区、包版本和大小。
 
 Actions artifacts 保留 30 天，请下载归档。每次更新在新提交修改锁定版本后重新构建，不依赖浮动 feeds 自动升级。
+
+## 在本地加入 Wi-Fi 等私人配置
+
+在 Linux/WSL 中解开本批次 `*imagebuilder*.tar.zst`，通过 `make image PROFILE=xiaomi_redmi-router-ax6000-mtkuboot FILES=/absolute/private-overlay PACKAGES="..."` 重新组包。内核和插件使用已编译版本，不需要再次编译；`PACKAGES` 应沿用 `ax6000-evidence/firmware-audit.json` 的包清单，并排除被 dnsmasq-full 替代的 `dnsmasq`。
+
+`private-overlay` 按根文件系统路径放置已迁移的配置，例如 `etc/config/wireless`、`etc/config/network`、`etc/config/dhcp`。闭源驱动相关配置应按新版 mtwifi-cfg 格式转换；不能把旧系统所有文件覆盖过去。这个目录和生成的私人固件只留本地，不提交、不上传 Actions。
+
+工作流会用无秘密的标记文件实际重组一次镜像，核对标记被写入、包清单一致和内核保持不变，证明这套 ImageBuilder 可以使用。私人配置的导出、转换和正式写入在迁移阶段执行。
 
 ## 验证范围
 

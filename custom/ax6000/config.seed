@@ -6,6 +6,8 @@ CONFIG_DEVEL=y
 CONFIG_CCACHE=y
 CONFIG_INCLUDE_CONFIG=y
 CONFIG_JSON_OVERVIEW_IMAGE_INFO=y
+CONFIG_IB=y
+CONFIG_IB_STANDALONE=y
 
 # Build real, in-kernel BTF; do not substitute an empty provider for it.
 CONFIG_KERNEL_DEBUG_INFO=y

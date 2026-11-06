@@ -43,6 +43,8 @@ jobs:
         run: make -j"$(nproc)" 2>&1 | tee build.log
       - name: Verify effective kernel and firmware contents
         run: python3 custom/ax6000/verify.py artifacts 2>&1 | tee verify.log
+      - name: Verify offline ImageBuilder customization
+        run: python3 custom/ax6000/verify-imagebuilder.py 2>&1 | tee imagebuilder.log
       - name: Upload verified firmware and matching packages
         uses: actions/upload-artifact@v7.0.2
         with:
