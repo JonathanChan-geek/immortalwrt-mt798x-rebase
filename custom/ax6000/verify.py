@@ -164,9 +164,12 @@ def check_artifacts():
     assert packages["kmod-mt_wifi"]["V"].endswith("-r2"), "Missing BTM query driver revision"
     assert packages["mihomo-meta"]["V"].startswith("1.19.32")
     assert packages["honk"]["V"].startswith("0.1.0_beta5")
-    for path in ("usr/bin/honk-core", "usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal"):
+    for path in ("usr/bin/honk-core", "usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal", "usr/sbin/iwconfig"):
         binary = (root / path).read_bytes()
         assert binary[:6] == b"\x7fELF\x02\x01" and struct.unpack_from("<H", binary, 18)[0] == 183, path
+    assert (root / "usr/sbin/iwpriv").is_symlink()
+    assert (root / "usr/sbin/iwpriv").readlink() == Path("iwconfig")
+    assert "wireless-tools" in packages["mtwifi-cfg-ucode"]["D"].split()
     honk = (root / "usr/bin/honk-core").read_bytes()
     assert b"v0.1.0-beta.5" in honk and b"index.html" in honk
     assert re.search(r"option\s+'?enabled'?\s+'?0'?", (root / "etc/config/nikki").read_text())

@@ -12,6 +12,8 @@
 
 mt_wifi 的本地 r2 修复 BTM query 零长尾数组触发的 FORTIFY 告警，保留 14 字节事件头和内核保护；同时处理该序列化路径的长度溢出及分配失败。云端对实际打补丁后的 C 函数执行 14 个正常/边界/失败用例，并核对最终驱动包版本。无线参数调优与驱动兼容修复分开验收，不把补丁等同于吞吐提升。
 
+mtwifi-cfg-ucode 的驱动控制代码调用 iwpriv，本地 r2 补上 wireless-tools 运行依赖，并检查镜像中的 ARM64 iwmulticall 与 iwpriv 入口，避免配置接口存在但底层命令缺失。
+
 ## 预装功能
 
 - honk v0.1.0-beta.5、LuCI 配置页和内嵌 Doona 管理界面。

@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=mtwifi-cfg-ucode
 PKG_LICENSE:=GPL-2.0
 PKG_VERSION:=3
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -35,7 +35,7 @@ endef
 
 define Package/mtwifi-cfg-ucode
   $(call Package/mtwifi-cfg-ucode/Default)
-  DEPENDS:=$(UCODE_DEPENDS) +wifi-scripts +iwinfo-ucode
+  DEPENDS:=$(UCODE_DEPENDS) +wifi-scripts +iwinfo-ucode +wireless-tools
 endef
 
 define Build/Prepare
