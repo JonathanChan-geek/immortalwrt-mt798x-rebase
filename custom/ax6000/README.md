@@ -16,6 +16,9 @@
 - Nikki v1.26.2、服务包 2026.10.10-r1、mihomo v1.19.32。
 - 内置 BTF、BPF/TCX/cgroup、netkit、veth、NFQUEUE；Nikki 所需 dummy/tun/socket/tproxy。
 - 闭源无线管理、EQoS、TurboACC、UPnP、wrtbwmon、ksmbd、Argon，以及拨号、双栈、DNS、存储和诊断工具。
+- 按需使用的 iperf3 与 bpftool-minimal，用于区分无线/链路吞吐和检查 eBPF；不自启测速服务，不设定时压测。
+
+本定制不加入 SQM/CAKE，不预设上下行限速。闭源无线的波束成形、MU-MIMO、OFDMA 等编译能力保留；私有迁移时按实际使用基线设置运行参数，再逐项实测。驱动支持某项功能不代表应该直接把所有开关打开。
 
 新配置的 LAN 地址为 **192.168.6.1**。不预置管理密码、Wi-Fi 密码、拨号账号、订阅或 SSH 身份。honk 首次启动默认关闭，Nikki 默认 `enabled=0`；用户配置由后续私有迁移处理，不放进公共固件。
 

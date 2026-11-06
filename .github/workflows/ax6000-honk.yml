@@ -33,6 +33,8 @@ jobs:
             dl
             .ccache
           key: ax6000-ubuntu24-${{ hashFiles('custom/ax6000/versions.env', 'custom/ax6000/feeds.lock', 'custom/ax6000/*.config', 'custom/ax6000/config.seed') }}
+          restore-keys: |
+            ax6000-ubuntu24-
       - name: Prepare pinned feeds and configuration
         run: bash custom/ax6000/prepare.sh 2>&1 | tee prepare.log
       - name: Prepare pinned honk toolchains

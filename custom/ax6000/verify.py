@@ -27,6 +27,8 @@ def check_config():
     assert actual.get("CONFIG_KERNEL_DEBUG_INFO_REDUCED") != "y"
     assert actual.get("CONFIG_TARGET_MULTI_PROFILE") != "y"
     assert actual.get("CONFIG_MTK_MT_WIFI_DRIVER_VERSION_7673") == "y"
+    for name in ("sqm-scripts", "luci-app-sqm", "kmod-sched-cake"):
+        assert actual.get("CONFIG_PACKAGE_" + name) not in ("y", "m"), name
     targets = [k for k, v in actual.items() if k.startswith("CONFIG_TARGET_mediatek_filogic_DEVICE_") and v == "y"]
     assert targets == [f"CONFIG_TARGET_mediatek_filogic_DEVICE_{DEVICE}"], targets
     print(f"Effective build configuration: {len(required)} required settings present")
@@ -147,6 +149,7 @@ def check_artifacts():
     wanted = re.findall(r"^CONFIG_PACKAGE_([a-z][\w+-]*)=y$", (TOP / "custom/ax6000/config.seed").read_text(), re.M)
     absent = sorted(set(wanted) - packages.keys())
     assert not absent, f"Missing installed packages: {absent}"
+    assert not {"sqm-scripts", "luci-app-sqm", "kmod-sched-cake"} & packages.keys()
     kernel = packages["kernel"]["V"]
     for name, package in packages.items():
         if name.startswith("kmod-"):
@@ -154,7 +157,7 @@ def check_artifacts():
     assert packages["kmod-mt_wifi"]["V"].startswith("6.12.112.7.6.7.3"), packages["kmod-mt_wifi"]
     assert packages["mihomo-meta"]["V"].startswith("1.19.32")
     assert packages["honk"]["V"].startswith("0.1.0_beta5")
-    for path in ("usr/bin/honk-core", "usr/libexec/mihomo"):
+    for path in ("usr/bin/honk-core", "usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal"):
         binary = (root / path).read_bytes()
         assert binary[:6] == b"\x7fELF\x02\x01" and struct.unpack_from("<H", binary, 18)[0] == 183, path
     honk = (root / "usr/bin/honk-core").read_bytes()
