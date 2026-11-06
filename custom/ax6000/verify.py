@@ -163,6 +163,7 @@ def check_artifacts():
     honk = (root / "usr/bin/honk-core").read_bytes()
     assert b"v0.1.0-beta.5" in honk and b"index.html" in honk
     assert re.search(r"option\s+'?enabled'?\s+'?0'?", (root / "etc/config/nikki").read_text())
+    assert re.search(r"option\s+'?enabled'?\s+'?0'?", (root / "etc/config/wrtbwmon").read_text())
     assert "/etc/init.d/honk disable" in (root / "etc/uci-defaults/90-honk-autostart").read_text()
     assert "192.168.6.1" in (root / "bin/config_generate").read_text()
     root_shadow = next(line for line in (root / "etc/shadow").read_text().splitlines() if line.startswith("root:"))

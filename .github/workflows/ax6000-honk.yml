@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ax6000-firmware-${{ github.ref }}
   cancel-in-progress: false

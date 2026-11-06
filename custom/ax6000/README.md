@@ -20,6 +20,8 @@
 
 本定制不加入 SQM/CAKE，不预设上下行限速。闭源无线的波束成形、MU-MIMO、OFDMA 等编译能力保留；私有迁移时按实际使用基线设置运行参数，再逐项实测。驱动支持某项功能不代表应该直接把所有开关打开。
 
+wrtbwmon 使用原维护者固定版本（LuCI 2.0.13、后端 1.2.1-r3），保留现有功能入口但默认关闭。它依赖 iptables-nft/ip6tables-nft，不能据其统计承诺覆盖 HNAT 快路径；不把它作为常驻测速或优化服务。
+
 新配置的 LAN 地址为 **192.168.6.1**。不预置管理密码、Wi-Fi 密码、拨号账号、订阅或 SSH 身份。honk 首次启动默认关闭，Nikki 默认 `enabled=0`；用户配置由后续私有迁移处理，不放进公共固件。
 
 使用 honk 前先停止 Nikki，配置节点、规则和接口，再启用 honk；回到 Nikki 前先停止 honk。honk 的原生界面启用后位于 `http://192.168.6.1:9527/`，首次访问建立管理员账号；不开放 WAN 管理入口。Fake-IP、MRS 和已有 mihomo 策略组不能直接视为已迁移。
@@ -35,6 +37,8 @@ Actions artifacts 保留 30 天，请下载归档。每次更新在新提交修�
 ## 在本地加入 Wi-Fi 等私人配置
 
 在 Linux/WSL 中解开本批次 `*imagebuilder*.tar.zst`，通过 `make image PROFILE=xiaomi_redmi-router-ax6000-mtkuboot FILES=/absolute/private-overlay PACKAGES="..."` 重新组包。内核和插件使用已编译版本，不需要再次编译；`PACKAGES` 应沿用 `ax6000-evidence/firmware-audit.json` 的包清单，并排除被 dnsmasq-full 替代的 `dnsmasq`。
+
+本机 WSL 会继承带空格的 Windows PATH，可能让构建中的 find -execdir 拒绝执行。组包命令前加 `env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`，只为该命令使用 Linux 工具路径，不修改系统环境。
 
 `private-overlay` 按根文件系统路径放置已迁移的配置，例如 `etc/config/wireless`、`etc/config/network`、`etc/config/dhcp`。闭源驱动相关配置应按新版 mtwifi-cfg 格式转换；不能把旧系统所有文件覆盖过去。这个目录和生成的私人固件只留本地，不提交、不上传 Actions。
 

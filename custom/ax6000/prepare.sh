@@ -26,6 +26,29 @@ clone_fixed https://github.com/daeuniverse/honk.git "$HONK_REV" .custom-sources/
 cp custom/ax6000/feeds.lock feeds.conf
 printf 'src-link honk_custom %s/.custom-sources/honk-feed\n' "$TOP" >> feeds.conf
 ./scripts/feeds update -a
+
+# Keep the existing optional traffic monitor available but inactive by default.
+python3 - <<'PY'
+from pathlib import Path
+p = Path("feeds/wrtbwmon/wrtbwmon/Makefile")
+text = p.read_text()
+old = "+iptables +@BUSYBOX_CONFIG_IP"
+new = "+iptables-nft +ip6tables-nft +ip-full"
+if old in text:
+    assert text.count(old) == 1
+    p.write_text(text.replace(old, new))
+else:
+    assert new in text, "upstream wrtbwmon dependencies changed"
+p = Path("feeds/wrtbwmon/wrtbwmon/net/etc/config/wrtbwmon")
+text = p.read_text()
+old, new = "option enabled '1'", "option enabled '0'"
+if old in text:
+    assert text.count(old) == 1
+    p.write_text(text.replace(old, new))
+else:
+    assert new in text, "upstream wrtbwmon defaults changed"
+PY
+./scripts/feeds update -i wrtbwmon
 ./scripts/feeds install -a
 ./scripts/feeds install -f -p nikki nikki luci-app-nikki mihomo-meta
 ./scripts/feeds install -f -p honk_custom honk luci-app-honk luci-lib-daeuniverse vmlinux-btf-builtin
