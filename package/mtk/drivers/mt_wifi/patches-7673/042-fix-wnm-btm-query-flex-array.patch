@@ -1,0 +1,44 @@
+--- a/mt_wifi/embedded/include/oid.h
++++ b/mt_wifi/embedded/include/oid.h
+@@ -2382,7 +2382,7 @@
+ 	UINT32 ifindex;
+ 	UCHAR peer_mac_addr[6];
+ 	UINT32 btm_query_len;
+-	UCHAR btm_query[0];
++	UCHAR btm_query[];
+ };
+ 
+ struct GNU_PACKED btm_rsp_data {
+--- a/mt_wifi/embedded/common/wnm.c
++++ b/mt_wifi/embedded/common/wnm.c
+@@ -52,8 +52,14 @@
+ 	UINT16 buflen = 0;
+ 	char *buf;
+ 
+-	buflen = sizeof(struct wnm_event) + sizeof(struct btm_query_data) + btm_query_len;
++	/* event_len is one byte; reject an unrepresentable event body. */
++	if (btm_query_len > 0xff - sizeof(*query_data))
++		return;
++
++	buflen = sizeof(struct wnm_event) + sizeof(*query_data) + btm_query_len;
+ 	os_alloc_mem(NULL, (UCHAR **)&buf, buflen);
++	if (!buf)
++		return;
+ 	NdisZeroMemory(buf, buflen);
+ 
+ 	event_data = (struct wnm_event *)buf;
+@@ -83,8 +89,14 @@
+ 	struct btm_query_data *query_data;
+ 	UINT16 buflen = 0;
+ 	char *buf;
++	/* Keep the packed event within the 16-bit WEXT length field. */
++	if (btm_query_len > 0xffff - sizeof(*query_data))
++		return;
++
+ 	buflen = sizeof(*query_data) + btm_query_len;
+ 	os_alloc_mem(NULL, (UCHAR **)&buf, buflen);
++	if (!buf)
++		return;
+ 	NdisZeroMemory(buf, buflen);
+ 	query_data = (struct btm_query_data *)buf;
+ 	query_data->ifindex = RtmpOsGetNetIfIndex(net_dev);

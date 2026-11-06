@@ -134,10 +134,16 @@ def check_artifacts():
     kernel_paths = list((TOP / "build_dir").glob("target-*/linux-mediatek_filogic/linux-6.12.112/.config"))
     assert len(kernel_paths) == 1, kernel_paths
     kconf = config(kernel_paths[0])
-    core = "BPF BPF_SYSCALL BPF_JIT CGROUPS CGROUP_BPF NET_SCHED NET_CLS_ACT NET_XGRESS NET_NS NETKIT DEBUG_INFO_BTF".split()
+    core = "BPF BPF_SYSCALL BPF_JIT CGROUPS CGROUP_BPF NET_SCHED NET_CLS_ACT NET_XGRESS NET_NS NETKIT DEBUG_INFO_BTF FORTIFY_SOURCE".split()
     assert all(kconf.get("CONFIG_" + name) == "y" for name in core), {name: kconf.get("CONFIG_" + name) for name in core}
     for name in "VETH NFT_QUEUE NETFILTER_NETLINK_QUEUE NET_CLS_BPF NET_ACT_BPF TUN DUMMY".split():
         assert kconf.get("CONFIG_" + name) in ("y", "m"), name
+
+    # Test the prepared source that produced this driver, not a patch file alone.
+    drivers = list((TOP / "build_dir").glob("target-*/linux-mediatek_filogic/mt_wifi"))
+    assert len(drivers) == 1, drivers
+    query_test = json.loads(subprocess.check_output(
+        [sys.executable, str(TOP / "custom/ax6000/test-wnm-query.py"), str(drivers[0])], text=True))
 
     work = TOP / ".custom-audit"
     work.mkdir(exist_ok=False)
@@ -155,6 +161,7 @@ def check_artifacts():
         if name.startswith("kmod-"):
             assert f"kernel={kernel}" in package.get("D", "").split(), (name, package)
     assert packages["kmod-mt_wifi"]["V"].startswith("6.12.112.7.6.7.3"), packages["kmod-mt_wifi"]
+    assert packages["kmod-mt_wifi"]["V"].endswith("-r2"), "Missing BTM query driver revision"
     assert packages["mihomo-meta"]["V"].startswith("1.19.32")
     assert packages["honk"]["V"].startswith("0.1.0_beta5")
     for path in ("usr/bin/honk-core", "usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal"):
@@ -178,6 +185,7 @@ def check_artifacts():
               "btf_offsets_in_image": btf, "ubi_offset": "0x600000", "ubi_bytes": 110 * 1024 * 1024,
               "factory_bytes": factory.stat().st_size, "sysupgrade_bytes": image.stat().st_size,
               "packages": {name: p["V"] for name, p in sorted(packages.items())},
+              "wnm_query_regression": query_test,
               "runtime_validation": "not flashed; offline checks only"}
     EVIDENCE.mkdir(exist_ok=True, parents=True)
     (EVIDENCE / "firmware-audit.json").write_text(json.dumps(report, indent=2) + "\n")

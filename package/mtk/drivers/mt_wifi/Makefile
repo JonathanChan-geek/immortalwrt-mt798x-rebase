@@ -7,6 +7,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=mt_wifi
+PKG_RELEASE:=2
 REPO_URL:=https://raw.githubusercontent.com/hanwckf/immortalwrt-mt798x/refs/heads/openwrt-21.02/dl
 
 ifeq ($(CONFIG_MTK_CHIP_MT7981),y)
