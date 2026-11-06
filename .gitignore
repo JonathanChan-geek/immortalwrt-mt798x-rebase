@@ -35,3 +35,6 @@ git-src
 .cproject
 .ccache
 .vscode*
+/.custom-sources/
+/.custom-audit/
+/*.log
