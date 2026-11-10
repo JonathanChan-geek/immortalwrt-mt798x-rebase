@@ -13,6 +13,10 @@ from pathlib import Path
 TOP = Path(__file__).resolve().parents[2]
 DEVICE = "xiaomi_redmi-router-ax6000-mtkuboot"
 EVIDENCE = TOP / "bin/ax6000-evidence"
+PINS = dict(re.findall(r"^([A-Z_]+)=(\S+)$", (TOP / "custom/ax6000/versions.env").read_text(), re.M))
+FORBIDDEN_PACKAGES = {"honk", "luci-app-honk", "luci-lib-daeuniverse",
+                      "luci-i18n-daeuniverse-zh-cn", "vmlinux-btf-builtin",
+                      "sqm-scripts", "luci-app-sqm", "kmod-sched-cake"}
 
 
 def config(path):
@@ -27,7 +31,7 @@ def check_config():
     assert actual.get("CONFIG_KERNEL_DEBUG_INFO_REDUCED") != "y"
     assert actual.get("CONFIG_TARGET_MULTI_PROFILE") != "y"
     assert actual.get("CONFIG_MTK_MT_WIFI_DRIVER_VERSION_7673") == "y"
-    for name in ("sqm-scripts", "luci-app-sqm", "kmod-sched-cake"):
+    for name in FORBIDDEN_PACKAGES:
         assert actual.get("CONFIG_PACKAGE_" + name) not in ("y", "m"), name
     targets = [k for k, v in actual.items() if k.startswith("CONFIG_TARGET_mediatek_filogic_DEVICE_") and v == "y"]
     assert targets == [f"CONFIG_TARGET_mediatek_filogic_DEVICE_{DEVICE}"], targets
@@ -150,31 +154,48 @@ def check_artifacts():
     (work / "root.squashfs").write_bytes(root_data)
     root = work / "rootfs"
     # No device nodes are needed; avoid creating /dev/console on the build host.
-    subprocess.run(["unsquashfs", "-no-progress", "-d", str(root), str(work / "root.squashfs"), "etc", "usr", "lib", "bin", "sbin"], check=True)
+    subprocess.run(["unsquashfs", "-no-progress", "-d", str(root), str(work / "root.squashfs"), "etc", "usr", "lib", "bin", "sbin", "www"], check=True)
     packages = package_db(root / "lib/apk/db/installed")
     wanted = re.findall(r"^CONFIG_PACKAGE_([a-z][\w+-]*)=y$", (TOP / "custom/ax6000/config.seed").read_text(), re.M)
     absent = sorted(set(wanted) - packages.keys())
     assert not absent, f"Missing installed packages: {absent}"
-    assert not {"sqm-scripts", "luci-app-sqm", "kmod-sched-cake"} & packages.keys()
+    assert not FORBIDDEN_PACKAGES & packages.keys(), "Retired or unwanted package in image"
     kernel = packages["kernel"]["V"]
     for name, package in packages.items():
         if name.startswith("kmod-"):
             assert f"kernel={kernel}" in package.get("D", "").split(), (name, package)
     assert packages["kmod-mt_wifi"]["V"].startswith("6.12.112.7.6.7.3"), packages["kmod-mt_wifi"]
     assert packages["kmod-mt_wifi"]["V"].endswith("-r2"), "Missing BTM query driver revision"
-    assert packages["mihomo-meta"]["V"].startswith("1.19.32")
-    assert packages["honk"]["V"].startswith("0.1.0_beta5")
-    for path in ("usr/bin/honk-core", "usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal", "usr/sbin/iwconfig"):
+    assert packages["mihomo-meta"]["V"] == PINS["MIHOMO_VERSION"] + "-r1"
+    assert packages["luci-app-adzero"]["V"] == PINS["ADZERO_TAG"].removeprefix("v") + "-r1"
+    assert packages["adblock-fast"]["V"] == "1.2.4-r4"
+    for path in ("usr/libexec/mihomo", "usr/bin/iperf3", "usr/libexec/bpftool-minimal", "usr/sbin/iwconfig"):
         binary = (root / path).read_bytes()
         assert binary[:6] == b"\x7fELF\x02\x01" and struct.unpack_from("<H", binary, 18)[0] == 183, path
     assert (root / "usr/sbin/iwpriv").is_symlink()
     assert (root / "usr/sbin/iwpriv").readlink() == Path("iwconfig")
     assert "wireless-tools" in packages["mtwifi-cfg-ucode"]["D"].split()
-    honk = (root / "usr/bin/honk-core").read_bytes()
-    assert b"v0.1.0-beta.5" in honk and b"index.html" in honk
+    core_version = subprocess.check_output(
+        ["qemu-aarch64", str(root / "usr/libexec/mihomo"), "-v"], text=True, timeout=30).strip()
+    assert "Mihomo Meta v" + PINS["MIHOMO_VERSION"] + " " in core_version, core_version
+    assert "with_gvisor" in core_version, core_version
+    for path in ("usr/bin/honk", "usr/bin/honk-core", "etc/honk", "etc/config/honk",
+                 "etc/init.d/honk", "etc/init.d/honk-feed", "etc/init.d/home-access",
+                 "etc/home-access", "etc/uci-defaults/90-honk-autostart"):
+        assert not (root / path).exists() and not (root / path).is_symlink(), path
+    for name in ("adzero", "adblock-fast"):
+        text = (root / "etc/config" / name).read_text()
+        assert re.search(r"option\s+'?enabled'?\s+'?0'?(?:\s|$)", text), name
+    adzero_config = (root / "etc/config/adzero").read_text()
+    assert re.search(r"option\s+routing_enabled\s+'0'", adzero_config)
+    assert "dns_profile" not in adzero_config and "dns_enhance" not in adzero_config
+    for path in ("usr/libexec/adzero/ctl", "usr/libexec/adzero/adapter.uc",
+                 "usr/share/rpcd/acl.d/luci-app-adzero.json", "etc/init.d/adzero",
+                 "www/luci-static/resources/view/adzero/overview.js"):
+        assert (root / path).is_file(), path
+    assert "nikki-rules" in (root / "usr/libexec/adzero/adapter.uc").read_text()
     assert re.search(r"option\s+'?enabled'?\s+'?0'?", (root / "etc/config/nikki").read_text())
     assert re.search(r"option\s+'?enabled'?\s+'?0'?", (root / "etc/config/wrtbwmon").read_text())
-    assert "/etc/init.d/honk disable" in (root / "etc/uci-defaults/90-honk-autostart").read_text()
     assert "192.168.6.1" in (root / "bin/config_generate").read_text()
     root_shadow = next(line for line in (root / "etc/shadow").read_text().splitlines() if line.startswith("root:"))
     assert root_shadow.split(":")[1] in ("", "!", "*"), "Image contains a preset root password"
@@ -189,6 +210,8 @@ def check_artifacts():
               "factory_bytes": factory.stat().st_size, "sysupgrade_bytes": image.stat().st_size,
               "packages": {name: p["V"] for name, p in sorted(packages.items())},
               "wnm_query_regression": query_test,
+              "mihomo_actual_version": core_version,
+              "honk_absent": True, "adzero_default_disabled": True,
               "runtime_validation": "not flashed; offline checks only"}
     EVIDENCE.mkdir(exist_ok=True, parents=True)
     (EVIDENCE / "firmware-audit.json").write_text(json.dumps(report, indent=2) + "\n")

@@ -1,55 +1,41 @@
-# 红米 AX6000：闭源 Wi-Fi + honk / Nikki
+# 红米 AX6000：Nikki 单核心 + AdZero
 
-在 GitHub 的 **Actions → Redmi AX6000 honk firmware → Run workflow** 手动构建。
-成功后下载 `ax6000-honk-<run-id>`，其中包含固件、同批次 APK/kmods 和 `ax6000-evidence/` 核验记录。
-同时提供配齐本批次软件包的独立 ImageBuilder，供本地注入私人配置。
+在 GitHub Actions 选择 **Redmi AX6000 Nikki and AdZero firmware** 手动构建。下载 `ax6000-nikki-adzero-<run-id>`，其中有 factory/sysupgrade、同批次 APK/kmods、独立 ImageBuilder 和 `ax6000-evidence/`。
 
-## 此固件适用的设备
+分支构建命令：`gh workflow run ax6000-honk.yml --ref codex/ax6000-nikki-adzero`。文件名沿用已注册的旧工作流入口，避免为构建更改仓库默认分支；实际执行本分支的新配置，不包含 honk。
 
-只适用于红米 AX6000 的 **MTK U-Boot、110 MiB 单 UBI** 布局：UBI 起点 `0x600000`，长度 `0x6e00000`，保留 NMBM。不是小米 AX6000，也不是本上游另一种 ubootmod/stock 布局。
+## 设备和基础
 
-首版基线为 Linux 6.12.112、闭源 mt_wifi 7.6.7.3。生成 factory 和 sysupgrade 两种镜像；名称不能代替当前设备升级入口的核对。已知旧系统可能把传统 kernel/rootfs UBI 误分派到 FIT 升级函数，本项目不提供强制刷写命令。
+只适用于红米 AX6000 的 **MTK U-Boot、110 MiB 单 UBI** 布局，UBI 起点 `0x600000`、长度 `0x6e00000`、保留 NMBM。不是小米 AX6000，也不是另一种 stock/ubootmod 布局。保留 Linux 6.12.112、闭源 mt_wifi 7.6.7.3 及现有无线编译配置，不提供强刷命令。
 
-mt_wifi 的本地 r2 修复 BTM query 零长尾数组触发的 FORTIFY 告警，保留 14 字节事件头和内核保护；同时处理该序列化路径的长度溢出及分配失败。云端对实际打补丁后的 C 函数执行 14 个正常/边界/失败用例，并核对最终驱动包版本。无线参数调优与驱动兼容修复分开验收，不把补丁等同于吞吐提升。
-
-mtwifi-cfg-ucode 的驱动控制代码调用 iwpriv，本地 r2 补上 wireless-tools 运行依赖，并检查镜像中的 ARM64 iwmulticall 与 iwpriv 入口，避免配置接口存在但底层命令缺失。
+mt_wifi r2 修复 BTM query 零长尾数组引起的 FORTIFY 告警，保留14字节头与内核保护；云端对实际准备的驱动源码运行14个边界/错误/正常用例。mtwifi-cfg-ucode r2 补齐 wireless-tools/iwpriv 依赖。兼容修复不等于已证明无线吞吐提升。
 
 ## 预装功能
 
-- honk v0.1.0-beta.5、LuCI 配置页和内嵌 Doona 管理界面。
-- Nikki v1.26.2、服务包 2026.10.10-r1、mihomo v1.19.32。
-- 内置 BTF、BPF/TCX/cgroup、netkit、veth、NFQUEUE；Nikki 所需 dummy/tun/socket/tproxy。
-- 闭源无线管理、EQoS、TurboACC、UPnP、wrtbwmon、ksmbd、Argon，以及拨号、双栈、DNS、存储和诊断工具。
-- 按需使用的 iperf3 与 bpftool-minimal，用于区分无线/链路吞吐和检查 eBPF；不自启测速服务，不设定时压测。
+- Nikki 1.26.2、服务 2026.10.10-r1；唯一 Mihomo v1.19.33 with_gvisor。设备专用 APK 使用官方 ARM64 二进制，固定发布摘要作下载校验，元数据与实际核心一致。定义见 `mihomo-meta.Makefile`。
+- AdZero 0.23.10、adblock-fast 1.2.4-r4，依赖由本固件一起构建。**保护和自动分流默认关闭**，不预置严格/增强 DNS。固件不含 honk、其专用 UI/标记包和独立 home-access。
+- 闭源无线、EQoS、TurboACC、UPnP、wrtbwmon、ksmbd、Argon、拨号/双栈/存储工具和原有按需诊断模块。BTF、iperf3、bpftool-minimal 保留，不自启测速。
 
-本定制不加入 SQM/CAKE，不预设上下行限速。闭源无线的波束成形、MU-MIMO、OFDMA 等编译能力保留；私有迁移时按实际使用基线设置运行参数，再逐项实测。驱动支持某项功能不代表应该直接把所有开关打开。
+不加 SQM/CAKE 或固定带宽限制。wrtbwmon 固定 LuCI 2.0.13/后端 1.2.1-r3、默认关闭，使用 iptables-nft/ip6tables-nft，不把它的统计当作 HNAT 全流量证明。
 
-wrtbwmon 使用原维护者固定版本（LuCI 2.0.13、后端 1.2.1-r3），保留现有功能入口但默认关闭。它依赖 iptables-nft/ip6tables-nft，不能据其统计承诺覆盖 HNAT 快路径；不把它作为常驻测速或优化服务。
+公共底包 LAN 为 **192.168.6.1**，不含密码、订阅、Wi-Fi/PPPoE 凭据或 SSH 身份；Nikki 默认 `enabled=0`。私人版从当前单核心现网配置组装，启用 Nikki 并保留原回家、手机订阅、选组和面板，不复用旧 honk overlay。
 
-新配置的 LAN 地址为 **192.168.6.1**。不预置管理密码、Wi-Fi 密码、拨号账号、订阅或 SSH 身份。honk 首次启动默认关闭，Nikki 默认 `enabled=0`；用户配置由后续私有迁移处理，不放进公共固件。
+## AdZero 怎么接入
 
-使用 honk 前先停止 Nikki，配置节点、规则和接口，再启用 honk；回到 Nikki 前先停止 honk。honk 的原生界面启用后位于 `http://192.168.6.1:9527/`，首次访问建立管理员账号；不开放 WAN 管理入口。Fake-IP、MRS 和已有 mihomo 策略组不能直接视为已迁移。
+LuCI → 服务 → AdZero。日后开启保护前，先确认当前 Nikki 模式可用；建议一份 HaGeZi Light 主列表，不叠加大列表。官方适配通过 `mixin.yaml`/`nikki-rules` 添加域名 provider、DNS NXDOMAIN 策略及 Fake-IP 排除，保留原完整路由规则。core_only、禁用但非空的混入、Fake-IP whitelist 等会拒绝自动接入，不能强开绕过。
 
-## 重现与后续补包
+保护开启后有同步、DNS handoff 和 tcpdump/ucode 观察进程；规则内容变化可能重启 Nikki，内容未变不会重复重载。它是广告管理能力，不是提速插件。原配置已有的广告规则不会随 AdZero 关闭而消失。自动分流/严格 DNS/增强入口本构建不启用。
 
-`versions.env`、`feeds.lock` 固定源代码；`wifi.config` 保留上游 MT7986 AX6000 无线参数，`config.seed` 只选择本设备和所需功能。工作流复用官方 honk/Nikki 打包脚本，通过本次 OpenWrt 工具链构建。
+## 固定构建与私人打包
 
-完整产物同时保留匹配的 APK/kmods。补装内核模块时使用**该构建的包**，不要因为官方源内核号也相同就混用，也不要强制忽略 kernel 依赖。`ax6000-evidence/firmware-audit.json` 记录实际 ABI、BTF、分区、包版本和大小。
+`versions.env`、`feeds.lock` 固定源；`wifi.config`/`config.seed` 定义设备与能力。仅复用下载和编译缓存，不复用旧固件。匹配内核模块必须使用这次构建的 APK，不强制忽略 kernel ABI 依赖。
 
-Actions artifacts 保留 30 天，请下载归档。每次更新在新提交修改锁定版本后重新构建，不依赖浮动 feeds 自动升级。
+在 Linux/WSL 解开本次 ImageBuilder，用 `make image PROFILE=xiaomi_redmi-router-ax6000-mtkuboot FILES=/absolute/private-overlay PACKAGES="... -dnsmasq"` 重组；完整包清单取本次 `ax6000-evidence/firmware-audit.json`。WSL 使用命令级 `env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`，避免带空格 Windows PATH 干扰。私人输入与输出只留本地，不能放进公共仓库或 Actions。
 
-## 在本地加入 Wi-Fi 等私人配置
+不要直接复制整个旧系统。保留新包程序，对照当前网络/无线格式；不复制活跃 cache.db、旧包数据库或旧核心。私人重组核验完整 kernel FIT、全包版本、文件权限、订阅可读权限与首启服务。Actions 产物保留30天，应下载归档。
 
-在 Linux/WSL 中解开本批次 `*imagebuilder*.tar.zst`，通过 `make image PROFILE=xiaomi_redmi-router-ax6000-mtkuboot FILES=/absolute/private-overlay PACKAGES="..."` 重新组包。内核和插件使用已编译版本，不需要再次编译；`PACKAGES` 应沿用 `ax6000-evidence/firmware-audit.json` 的包清单，并排除被 dnsmasq-full 替代的 `dnsmasq`。
+## 验收
 
-本机 WSL 会继承带空格的 Windows PATH，可能让构建中的 find -execdir 拒绝执行。组包命令前加 `env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`，只为该命令使用 Linux 工具路径，不修改系统环境。
+`verify.py config` 拒绝漏包和被禁止包；`verify.py artifacts` 读取实际镜像的 kernel/BTF/分区/包/模块/ELF，使用 QEMU 运行 ARM64 Mihomo `-v`，确认 AdZero 默认关闭及 honk 文件不存在。`verify-imagebuilder.py` 实际注入无秘密标记并检查包集合与内核不变。命令通过 pipefail 传递失败，上传不能掩盖失败。
 
-`private-overlay` 按根文件系统路径放置已迁移的配置，例如 `etc/config/wireless`、`etc/config/network`、`etc/config/dhcp`。闭源驱动相关配置应按新版 mtwifi-cfg 格式转换；不能把旧系统所有文件覆盖过去。这个目录和生成的私人固件只留本地，不提交、不上传 Actions。
-
-工作流会用无秘密的标记文件实际重组一次镜像，核对标记被写入、包清单一致和内核保持不变，证明这套 ImageBuilder 可以使用。私人配置的导出、转换和正式写入在迁移阶段执行。
-
-私人版若要求 honk 首启自动运行，不能只保留 rc.d 链接：本版本 90-honk-autostart 会在首次启动迁移启用状态。须给它显式的 honk.config.enabled=1 输入，迁移成功后该旧字段会被删除；公共底包继续默认关闭。私人验收应实际执行这个首启脚本的隔离用例。
-
-## 验证范围
-
-工作流检查最终镜像内的 BTF、分区、包与模块、二进制架构和首次启动默认值。通过代表离线构建候选合格；实际刷写、无线性能、HNAT/eBPF 共存和私人配置恢复需要在实机阶段验收。
+离线通过表示构建候选合格。刷机、客户端过滤、Wi-Fi 稳定性、HNAT 吞吐和手机公网回家属于后续实机验收，不能用构建绿色状态代替。

@@ -39,15 +39,23 @@ CONFIG_PACKAGE_luci-app-turboacc-mtk=y
 CONFIG_PACKAGE_luci-i18n-turboacc-mtk-zh-cn=y
 # MTK TurboACC has no generic TURBOACC_INCLUDE_* fastpath choice.
 
-# Both engines ship, but honk is disabled and Nikki has enabled=0 initially.
-CONFIG_PACKAGE_honk=y
-CONFIG_PACKAGE_luci-app-honk=y
-CONFIG_PACKAGE_luci-lib-daeuniverse=y
-CONFIG_PACKAGE_vmlinux-btf-builtin=y
+# Single proxy core. AdZero is preinstalled with protection disabled.
+# CONFIG_PACKAGE_honk is not set
+# CONFIG_PACKAGE_luci-app-honk is not set
+# CONFIG_PACKAGE_luci-lib-daeuniverse is not set
+# CONFIG_PACKAGE_vmlinux-btf-builtin is not set
 CONFIG_PACKAGE_luci-app-nikki=y
 CONFIG_PACKAGE_luci-i18n-nikki-zh-cn=y
 CONFIG_PACKAGE_nikki=y
 CONFIG_PACKAGE_mihomo-meta=y
+CONFIG_PACKAGE_luci-app-adzero=y
+CONFIG_PACKAGE_adblock-fast=y
+CONFIG_PACKAGE_rpcd-mod-file=y
+CONFIG_PACKAGE_rpcd-mod-ucode=y
+CONFIG_PACKAGE_ucode-mod-socket=y
+CONFIG_PACKAGE_ucode-mod-uloop=y
+CONFIG_PACKAGE_conntrack=y
+CONFIG_PACKAGE_coreutils-timeout=y
 CONFIG_PACKAGE_kmod-veth=y
 CONFIG_PACKAGE_kmod-sched-core=y
 CONFIG_PACKAGE_kmod-sched-bpf=y

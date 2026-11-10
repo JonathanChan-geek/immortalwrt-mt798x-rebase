@@ -4,28 +4,16 @@ cd "$(dirname "$0")/../.."
 TOP="$PWD"
 source custom/ax6000/versions.env
 
-clone_fixed() {
-    local url="$1" rev="$2" dest="$3"
-    if [ -d "$dest/.git" ]; then
-        [ "$(git -C "$dest" rev-parse HEAD)" = "$rev" ]
-        return
-    fi
-    git init -q "$dest"
-    git -C "$dest" remote add origin "$url"
-    git -C "$dest" fetch --depth 1 origin "$rev"
-    git -C "$dest" checkout -q --detach FETCH_HEAD
-}
-
-clone_fixed https://github.com/daeuniverse/openwrt-packages.git "$DAE_PACKAGES_REV" .custom-sources/dae-packages
-mkdir -p .custom-sources/honk-feed
-for package in honk luci-app-honk luci-lib-daeuniverse vmlinux-btf-builtin; do
-    cp -a ".custom-sources/dae-packages/$package" .custom-sources/honk-feed/
-done
-clone_fixed https://github.com/daeuniverse/honk.git "$HONK_REV" .custom-sources/honk-feed/honk/src
-
 cp custom/ax6000/feeds.lock feeds.conf
-printf 'src-link honk_custom %s/.custom-sources/honk-feed\n' "$TOP" >> feeds.conf
 ./scripts/feeds update -a
+test "$(git -C feeds/adzero rev-parse HEAD)" = "$ADZERO_REV"
+test "$(git -C feeds/nikki rev-parse HEAD)" = "$NIKKI_REV"
+
+# Package the deployed official release with matching APK metadata, instead of
+# overlaying a different executable over the old 1.19.32 package.
+cp custom/ax6000/mihomo-meta.Makefile feeds/nikki/mihomo-meta/Makefile
+grep -qx "PKG_VERSION:=$MIHOMO_VERSION" feeds/nikki/mihomo-meta/Makefile
+./scripts/feeds update -i nikki
 
 # Keep the existing optional traffic monitor available but inactive by default.
 python3 - <<'PY'
@@ -51,7 +39,7 @@ PY
 ./scripts/feeds update -i wrtbwmon
 ./scripts/feeds install -a
 ./scripts/feeds install -f -p nikki nikki luci-app-nikki mihomo-meta
-./scripts/feeds install -f -p honk_custom honk luci-app-honk luci-lib-daeuniverse vmlinux-btf-builtin
+./scripts/feeds install -f -p adzero luci-app-adzero
 
 # Change only the fresh-config fallback. Existing restored network config wins.
 python3 - <<'PY'

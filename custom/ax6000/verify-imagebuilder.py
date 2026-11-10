@@ -38,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix="ax6000-repack-") as directory:
     (overlay / "etc/ax6000-repack-check").write_text(marker)
     packages = " ".join(audit["packages"]) + " -dnsmasq"
     subprocess.run(["make", "-C", str(builder), "image", f"PROFILE={verify.DEVICE}",
-                    f"PACKAGES={packages}", f"FILES={overlay}", "DISABLED_SERVICES=honk"], check=True)
+                    f"PACKAGES={packages}", f"FILES={overlay}", "DISABLED_SERVICES=adzero adzero-dns adblock-fast"], check=True)
     rebuilt = next((builder / "bin/targets/mediatek/filogic").glob(f"*-{verify.DEVICE}-squashfs-sysupgrade.bin"))
     assert kernel_payload(rebuilt) == kernel_payload(original), "Repacking changed the kernel payload"
     with tarfile.open(rebuilt) as archive:
